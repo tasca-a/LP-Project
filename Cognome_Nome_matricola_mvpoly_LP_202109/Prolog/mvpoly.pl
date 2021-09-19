@@ -34,11 +34,20 @@ is_var_power_list(VPs) :-
   is_list(VPs),
   forall(member(VP, VPs), is_var_power(VP)).
 
-%%get_pwr_from_vp/1
+%%get_vps_from_mono/2
+%prende in input un Monomio e ne restituisce la lista sua lista di VarPowers
+get_vps_from_mono(m(_, _, Vps), Vps) :- !.
+
+%%get_pwr_from_vp/2
 %prende in input un VarPower e ne restituisce l'esponente
-get_pwr_from_vp(Vp, Result) :-
- Vp =.. TempList,
- last(TempList, Result).
+get_pwr_from_vp(v(Pwr, _), Pwr) :- !.
+
+%%get_varsymbols_from_vps/2
+%prende in input un VarPower e ne restituisce la variabile
+get_varsymbols_from_vps([], []) :- !.
+get_varsymbols_from_vps([v(_, VarSymbol) | Vps],
+                        [VarSymbol | VarList]) :-
+  !, get_varsymbols_from_vps(Vps, VarList).
 
 %%get_monomial_degree/2
 %prende come primo parametro la lista di VarPowers e mette il grado totale
@@ -49,10 +58,11 @@ get_monomial_degree([Vp | Vps], TotalSum) :-
   get_pwr_from_vp(Vp, Pow),
   TotalSum is Pow + PartialSum.
 
+
 %%get_monomial_coef/2
 %prende come primo parametro un Monomial e mette il  suo coefficiente nel
 %nel secondo parametro
-get_monomial_coef(m(C, _, _), C) :- !.
+get_monomial_coef(m(Coeff, _, _), Coeff) :- !.
 
 %%is_polynomial/1
 is_polynomial(poly(Monomials)) :-
@@ -152,18 +162,6 @@ reduce_monomial_same_var_call(m(C, TD, [v(D1, Var), v(D2, DiffVar) | VPs]),
   reduce_monomial_same_var(m(C, TD, [v(D2, DiffVar) | VPs]),
   m(C, TD, VPsReduced)).
 
-%%get_poly_coeffs/2
-%usato da coefficients/2
-get_poly_coeffs(poly([]), []) :- !.
-get_poly_coeffs(poly(Monomials), CoeffList) :-
-  get_poly_coeffsCall(poly(Monomials), CoeffList).
-
-%%get_poly_coeffsCall/2
-%usato da get_poly_coeffs/2
-get_poly_coeffsCall(poly([]), []) :- !.
-get_poly_coeffsCall(poly([M|Ms]), [C|Cs]) :-
-  get_monomial_coef(M, C),
-  get_poly_coeffsCall(poly(Ms), Cs).
 
 %%coefficients/2
 %ritorna true quando vero quando Coefficients è una lista dei
@@ -172,6 +170,54 @@ coefficients(poly([]), []).
 coefficients(Poly, CoefList) :-
   to_polynomial(Poly, PolyParsed), !,
   get_poly_coeffs(PolyParsed, CoefList).
+
+
+%%get_poly_coeffs/2
+%usato da coefficients/2
+get_poly_coeffs(poly([]), []) :- !.
+get_poly_coeffs(poly(Monomials), CoeffList) :-
+  get_poly_coeffsCall(poly(Monomials), CoeffList).
+
+
+%%get_poly_coeffsCall/2
+%usato da get_poly_coeffs/2
+get_poly_coeffsCall(poly([]), []) :- !.
+get_poly_coeffsCall(poly([M|Ms]), [C|Cs]) :-
+  get_monomial_coef(M, C),
+  get_poly_coeffsCall(poly(Ms), Cs).
+
+
+%% variables/2
+%ritorna true se il secondo argomento è la lista di tutte le varaibili di
+%un Poly passato come primo argomento
+variables(poly([]), []) :- !.
+variables(Poly, Variables) :-
+  to_polynomial(Poly, PolyParsed), !,
+  get_vars_from_poly(PolyParsed, VarsList),
+  get_varsymbols_from_vps(VarsList, UnsortedVarList), !,
+  sort(UnsortedVarList, Variables).
+
+%% get_vars_from_poly/2
+%ritorna true se il secondo argomento unifica con la lista delle variabili dei
+%monomi che formano il Poly passato come primo argomento
+get_vars_from_poly(poly([]), []) :- !.
+get_vars_from_poly(poly(Monos), VarList) :-
+  get_vars_from_polyCall(poly(Monos), VarList2),
+  append(VarList2, VarList3),
+  sort(2, @=<, VarList3, VarList).
+
+%%get_vars_from_polyCall/2
+%usato da get_vars_from_poly/2
+get_vars_from_polyCall(poly([]), []) :- !.
+get_vars_from_polyCall(poly([FirstMono | RestMono]),
+                       [R | ListaVar]) :-
+  get_vps_from_mono(FirstMono, R),
+  get_vars_from_polyCall(poly(RestMono), ListaVar).
+
+monomials(Poly, MonoList) :-
+  to_polynomial(Poly, PolyParsed),
+  PolyParsed =.. TempList,
+  last(TempList, MonoList).
 
 
 %%as_polynomial/2
