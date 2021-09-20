@@ -73,15 +73,60 @@
 ;; as-monomial/1
 ; Esegue il parse di un monomio.
 ; Dato un input "in", esegue questi passagg:
-; 1- costruisce un monomio non ordianto nella rappresentazione scelta da noi
+; 1- costruisce un monomio non ordianto nella rappresentazione scelta
 ; 2- ordina il monomio appena generato
 ; 3- riduce monomio sommando tra loro gli esponenti delle variabili simili
 (defun as-monomial (in)
-  (compress-vars-in-monomial ; cambia il nome in "mono-reduce"
-   (sort-monomial
+  (mono-reduce
+   (mono-sort 
     (mono-parse in)))) ; ex "as-monomial-unordered"
 
 ;===================================================================
+
+;; TOOL
+;; mono-reduce/1
+; Somma tra loro gli esponenti simili in un monomio, per
+; ridurlo alla forma base.
+(defun mono-reduce (m)
+  (if (null (var-powers m)) m
+    (append (list 'm (monomial-coefficient m) (monomial-degree m))
+            (list (varpow-reduce (var-powers m))))))
+
+;; TOOL
+;; varpow-reduce/1
+; Somma tra loro gli esponenti simili in una struttura di
+; var-powers.
+(defun varpow-reduce (varpows)
+  (when (not (null varpows))
+    (if (null (second varpows))
+        varpows
+      (let* ((varp1 (first varpows))
+            (varp2 (second varpows))
+            (esp1 (varpower-power varp1))
+            (esp2 (varpower-power varp2))
+            (v1 (varpower-symbol varp1))
+            (v2 (varpower-symbol varp2))
+            (coda (rest (rest varpows))))
+        (if (null coda)
+            (if (equal v1 v2)
+                (list (list 'v (+ (eval esp1) (eval esp2)) v1))
+              (append (list (list 'v esp1 v1))
+                      (list (list 'v esp2 v2))))
+          (if (not (null varp2))
+              (if (equal v1 v2)
+                  (varpow-reduce (append
+                                  (list (list 'v (+ (eval esp1) (eval esp2)) v1))
+                                  coda))
+                (append (list (list 'v esp1 v1))
+                        (varpow-reduce (rest varpows))))))))))
+
+;; TOOL
+;; mono-sort/1
+; Ordina le variabili di un monomio in ordine lessicografico
+(defun mono-sort (m)
+  (let ((nvp (copy-list (var-powers m))))
+    (append (list (first m) (second m) (third m))
+            (list (sort nvp 'string< :key 'third)))))
 
 ;; TOOL
 ;; basic-monomial-checks/1
@@ -117,8 +162,100 @@
 ; forma canonica, ma senza nessun tipo di ordinazione.
 (defun mono-parse (in)
   (cond
-   ((numerp (eval in)) (list 'm (eval in) 0 nil))
+   ((eval-as-number in) (list 'm (eval in) 0 nil))
    ((atom in) (list 'm 1 1 (list (list 'v 1 in))))
+   (t (let ((testa (first in)) (coda (rest in)))
+        (if (is-operator testa)
+            (cond
+             ((equal testa '-) (if (listp (second in))
+                                   (parse-negative-pow (second in))
+                                 (list 'm -1 1 (list 'v 1 (second in)))))
+             ((equal testa '*) (if (eql (build-c coda) 0)
+                                   (list 'm 0 0 nil)
+                                 (let ((vps (build-vp coda 0)))
+                                   (append (list 'm)
+                                           (list (build-c coda))
+                                           (list (first vps))
+                                           (list (rest vps))))))
+             ((equal testa '+) (error "Monomio non scritto correttamente.")))
+          (if (is-pow-not-parsed testa) (parse-pv testa)
+            (list 'm 1 1 (list (list 'v 1 testa)))))))))
+
+;; TOOL
+;; parse-pv/1
+; Esegue il parse di un input in forma (expt VAR ESP) trasformandolo
+; nella forma (v ESP VAR).
+(defun parse-pv (pv)
+  (when (is-pow-not-parsed pv)
+    (if (not (eq (third pv) 0))
+        (list 'm 1 (third pv) (list 'v (third vp) (second vp)))
+      (list 'm 1 '0 nil))))
+
+;; TOOL
+;; build-vp/2
+; Costruisce tutte le potenze di un monomio nella forma adeguata
+(defun build-vp (m tot-d)
+  (let ((testa (first m)) (coda (rest m)))
+    (cond
+     ((and (listp testa)
+           (not (null testa))
+           (not (eq (third testa) 0))
+           (equal (first testa) 'expt))
+      (append (build-vp coda (+ (eval tot-d) (eval (third testa))))
+              (list (list 'v (third testa) (second testa)))))
+     ((and (listp testa)
+           (not (null testa))
+           (eq (third testa) 0)
+           (equal (first testa) 'expt))
+      (append (build-vp coda (+ (eval tot-d) (eval (third testa)))) nil))
+     ((and (symbolp testa) (not (null testa)))
+      (append (build-vp coda (+ 1 (eval tot-d)))
+              (list (list 'v 1 testa))))
+     ((numberp (eval testa)) (build-vp coda tot-d))
+     ((null testa) (list tot-d)))))
+
+;; TOOL
+;; build-c/1
+; Esegue la valutazione del coefficiente di un monomio
+(defun build-c (m)
+  (if (null m) 1
+    (if (eval-as-number (first m))
+        (* 1 (eval (first m)) (build-c (rest m)))
+      (* 1 (build-c (rest m))))))
+
+;; TOOL
+;; eval-as-number/1
+; Ritorna l'input se la sua valutazione risulta essere un numero, altrimenti nil.
+(defun eval-as-number (in)
+  (let ((result (handler-case (eval in) (error () nil) (warning () nil))))
+    (when (numberp result) result)))
+
+;; TOOL
+;; parse-negative-pow/1
+; Esegue il parse di un input del tipo (expt VAR ESP) trasformandolo nella forma
+; (v ESP VAR) e gestisce il coefficiente negativo.
+(defun parse-negative-pow (pw)
+  (when (is-pow-not-parsed pw)
+    (list 'm -1 (third pw) (list 'v (third pw) (second pw)))))
+
+;; TOOL
+;; is-pow-parsed/1
+; Ritorna TRUE quando il parametro passatogli e' una potenza ancora
+; da parsare
+(defun is-pow-not-parsed (pw)
+  (if (listp pw)
+      (if (and (eql (first pw) 'expt)
+               (symbolp (second pw))
+               (numberp (third pw)))
+          T
+        nil)
+    nil))
+
+;; TOOL
+;; is-operator/1
+; Ritorna TRUE quando il parametro parratogli e' un operatore
+(defun is-operator (c)
+  (if (or (eql c '+) (eql c '-) (eql c '*) (eql c '/)) t nil))
 
 ;; TOOL
 ;; compare-degrees/2
