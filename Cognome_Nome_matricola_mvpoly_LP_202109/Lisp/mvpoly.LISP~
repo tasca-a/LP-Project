@@ -71,8 +71,8 @@
       (first (rest p)))) ; Spice some things up
 
 ;; as-monomial/1
-; Esegue il parse di un monomio.
-; Dato un input "in", esegue questi passagg:
+; Esegue il parse di un monomio riducendolo alla forma base e ordinandolo.
+; Dato un input "in", esegue questi passaggi:
 ; 1- costruisce un monomio non ordianto nella rappresentazione scelta
 ; 2- ordina il monomio appena generato
 ; 3- riduce monomio sommando tra loro gli esponenti delle variabili simili
@@ -81,7 +81,101 @@
    (mono-sort 
     (mono-parse in)))) ; ex "as-monomial-unordered"
 
+;; as-polynomial/1
+; Esegue il parse di un polinomio riducendolo alla forma base e ordinandolo.
+(defun as-polynomial  (in)
+  (if (is-monomial in)
+      (to-poly in)
+    (append (list 'poly) (list (zero-c-remove (m-in-p-sum (poly-sort (poly-parse in))))))))       
+
+;; pprint-polynomial/1
+; Stampa a video un polinomio in una rappresentazione "tradizionale"
+(defun pprint-polynomial (p)
+  (format t "~a" (format nil "~a" (;
+
 ;===================================================================
+
+;; TOOL
+; 
+
+;; TOOL
+;; poly-parse/1
+; Esegue il parse dell'input "in" e lo trasforma in un polinomio  nella
+; forma canonica, ma senza nessun tipo di ordinazione.
+(defun poly-parse (in)
+  (if (null in) nil
+    (if (atom in)
+        (list (as-monomial in))
+      (if (is-operator (first in))
+          (if (equal (first in) '+)
+              (poly-parse (rest in))
+            (list (as-monomial in)))
+        (if (and (not (null (rest in))) (listp in))
+            (append (list (as-monomial (first in)))
+                    (poly-parse (rest in)))
+          (list (as-monomial (first in))))))))
+
+;; TOOL
+;; m-in-p-sum/1
+; Somma tra loro i monomi con lo stesso simbolo di variabile in
+; una lista di monomi passata in input
+(defun m-in-p-sum (ms)
+  (cond
+   ((null ms) nil)
+   ((null (second ms)) ms)
+   (t (let* ((m1 (first  ms))
+             (m2 (second ms))
+             (c1 (monomial-coefficient m1))
+             (c2 (monomial-coefficient m2))
+             (var-ps1 (var-powers m1))
+             (var-ps2 (var-powers m2))
+             (d (monomial-degree m1)))
+        (if (equal var-ps1 var-ps2)
+            (m-in-p-sum (append (list (list 'm (+ c1 c2) d var-ps1))
+                                (rest (rest ms))))
+          (append (list m1) (m-in-p-sum (rest ms))))))))
+
+;; TOOL
+;; zero-c-remove/1
+; Ritorna la lista di monomi passata in input senza quelli con
+; coefficiente 0
+(defun zero-c-remove (ms)
+  (when (not (null ms))
+    (if (= (monomial-coefficient (first ms)) 0)
+        (zero-c-remove (rest ms))
+      (append (list (first ms)) (zero-c-remove (rest ms))))))
+
+;; TOOL
+;; to-poly/1
+; Controlla se "in" è un polinomio.
+; Se "in" non è un polinomio, esegue il parse.
+(defun to-poly (in)
+  (cond
+   ((is-monomial in) (append (list 'poly) (list (list in))))
+   ((is-polynomial in) (append (list 'poly) (poly-sort (list (monomials in)))))
+   ((if (or (equal '* (first in)) (atom in)) (to-poly (as-monomial in))
+      (as-polynomials in)))))
+   ;(t (error "Input non valido!")
+
+;; TOOL
+;; poly-sort/1
+(defun poly-sort (m)
+  (stable-sort (copy-list m) #'comp-d))
+
+;; TOOL
+;; comp-d/2
+; Ritorna TRUE se "m1" ha grado totale minore di "m2"
+(defun comp-d (m r)
+  (if (null m)
+      nil
+    (let ((ds (list (monomial-degree m) (monomial-degree r))))
+      (cond 
+       ((null m) (not (null r)))
+       ((null r) nil)
+       ((= (first ds) (second ds)) (compare-varpowers
+                                    (var-powers m) (var-powers r)))
+       (t (< (first ds) (second ds)))))))
+
 
 ;; TOOL
 ;; mono-reduce/1
@@ -256,13 +350,6 @@
 ; Ritorna TRUE quando il parametro parratogli e' un operatore
 (defun is-operator (c)
   (if (or (eql c '+) (eql c '-) (eql c '*) (eql c '/)) t nil))
-
-;; TOOL
-;; compare-degrees/2
-; "Compares the degrees of the monomials in a poly"
-; TODO Cambia i nomi!
-; Non l'ho ancora capito
-(defun compare-degrees (first-mono rest-monos))
 
 ;; TOOL
 ;; compare-varpowers/2

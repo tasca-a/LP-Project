@@ -88,8 +88,53 @@
       (to-poly in)
     (append (list 'poly) (list (zero-c-remove (m-in-p-sum (poly-sort (poly-parse in))))))))       
 
+;; pprint-polynomial/1
+; Stampa a video un polinomio in una rappresentazione "tradizionale"
+(defun pprint-polynomial (p)
+  (format t "~a" (format nil "~a" (poly-print (second (to-poly p))))))
+
 ;===================================================================
 
+;; TOOL
+;; poly-print/1
+; Data una lista di monomi che compongono un polinomio, la stampa
+; sullo standard output.
+(defun poly-print (ms)
+  (let ((m (first ms))
+        (coeff (second (second ms))))
+    (if (null coeff)
+        (append (mono-c-and-v m))
+      (if (> coeff 0)
+          (append (mono-c-and-v m)
+                  (list '+)
+                  (poly-print (rest ms)))
+        (append (mono-c-and-v m) (poly-print (rest ms)))))))
+
+;; TOOL
+;; mono-c-and-v/1
+; Stampa sullo standard output i coefficienti e le variabili del
+; monomio passato in input
+(defun mono-c-and-v (m)
+  (let ((coeff (second m))
+        (var-n-p (fourth m)))
+    (if (null var-n-p)
+        (append (list coeff))
+      (append (list coeff) (list '*) (mono-var var-n-p)))))
+
+;; TOOL
+;; mono-var/1
+; Stampa le variabili presenti in una struttura di var-powers
+(defun mono-var (vps)
+  (when (not (null vps))
+    (let ((esp (second (first vps)))
+          (var (third (first vps))))
+      (if (null (rest vps))
+          (if (= esp 1)
+              (append (list var))
+            (append (list var '^ esp)))
+        (if (= esp 1)
+            (append (list var '*) (mono-var (rest vps)))
+          (append (list var '^ esp '*) (mono-var (rest vps))))))))
 
 ;; TOOL
 ;; poly-parse/1
