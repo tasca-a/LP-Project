@@ -90,7 +90,6 @@
 
 ;; monomials/1
 ; Ritorna la lista ordinata di tutti i monomi che appaiono nel polinomio
-; TODO ordinamento! E anche controllo.
 (defun monomials (p)
   (if (not (equal (first p) 'poly))
       (monomials (to-poly p))
@@ -157,7 +156,7 @@
 
 ;; as-polynomial/1
 ; Esegue il parse di un polinomio riducendolo alla forma base e ordinandolo.
-(defun as-polynomial  (in)
+(defun as-polynomial (in)
   (if (is-monomial in)
       (to-poly in)
     (append (list 'poly) 
@@ -183,7 +182,6 @@
 (defun pprint-polynomial (p)
   (format t "~a" (format nil "~a" (poly-print (second (to-poly p))))))
 
-;===================================================================
 
 ;; TOOL
 ;; replace-vars/2
