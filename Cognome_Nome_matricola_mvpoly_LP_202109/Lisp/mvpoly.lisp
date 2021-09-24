@@ -36,6 +36,13 @@
          (and (listp ms)
               (every #'is-monomial ms)))))
 
+;; is_zero/1
+; Ritorna TRUE quando il parametro passato come input è una
+; rappresentazione dello zero.
+(defun is_zero (p)
+  (if (equal '(poly nil) (as-polynomial p)) t
+    (if (equal (second (first (second (as-polynomial p)))) 0) t nil)))
+
 ;; var-powers/1
 ; Ritorna una lista contenente le varpowers di un monomio.
 (defun var-powers (m)
@@ -46,8 +53,8 @@
 ; Ritorna la lista delle variabili contenuti in un monomio
 (defun vars-of (m)
   (if (basic-monomial-checks m)
-      (mapcar (lambda (x) (third x)) (var-powers m))
-    (error "Il parametro passato non e' un monomio"))) ; TODO qua ci vanno altri controlli!
+      (mapcar (lambda (x) (third x)) (var-powers (mono-sort m)))
+    (error "Il parametro passato non e' un monomio")))
 
 ;; monomial-degree/1
 ; Ritorna il grado totale di un monomio.
@@ -63,12 +70,75 @@
 (defun monomial-coefficient (m)
   (cond ((is-monomial m) (second m))))
 
+;; coefficients/1
+; Ritorna una lista di tutti i coefficienti di un polinomio
+(defun coefficients (p)
+  (let* ((ms (monomials (to-poly p))))
+    (if (not (null ms))
+        (mapcar 'monomial-coefficient ms)
+      '(0))))
+
+;; variables/1
+; Ritorna una lista di tutte le variabili di un polinomio
+(defun variables (p)
+  (let ((p-parsed (to-poly p)))
+    (remove-duplicates (mapcar #'varpower-symbol
+                               (apply #'append
+                                      (mapcar #'var-powers (monomials p-parsed)))))))
+
 ;; monomials/1
 ; Ritorna la lista ordinata di tutti i monomi che appaiono nel polinomio
 ; TODO ordinamento! E anche controllo.
 (defun monomials (p)
-  (if (equal (first p) 'poly)
-      (first (rest p)))) ; Spice some things up
+  (if (not (equal (first p) 'poly))
+      (monomials (to-poly p))
+    (poly-sort (first (rest p)))))
+
+;; max-degree/1
+; Ritorna il grado massimo dei monomi di un polinomio
+(defun max-degree (p)
+  (monomial-degree (first (last (monomials (to-poly p))))))
+
+;; min-degree/1
+; Ritorna il grado minimo dei monomi di un polinomio
+(defun min-degree (p)
+  (monomial-degree (first (monomials (to-poly p)))))
+
+;; poly-plus/2
+; Ritorna il polinomio risultante dalla somma dei due polinomi passati in input
+(defun poly-plus (p1 p2)
+  (append (list 'poly)
+          (list 
+           (zero-c-remove 
+            (poly-sort 
+             (m-in-p-sum 
+              (poly-sort
+               (append (monomials (to-poly p1))
+                       (monomials (to-poly p2))))))))))
+
+;; poly-minus/2
+; Ritorna il polinomio risultante dalla differenda dei due polinomi passati in input
+(defun poly-minus (p1 p2)
+  (append (list 'poly)
+          (list
+           (zero-c-remove
+            (poly-sort
+             (m-in-p-sum
+              (poly-sort
+               (append (monomials (to-poly p1))
+                       (sign-inverter (monomials (to-poly p2)))))))))))
+
+;; poly-times/2
+; Ritorna il polinomio risultante dalla moltiplicazione dei due polinomi passati in input
+(defun poly-times (p1 p2)
+  (append (list 'poly)
+          (list
+           (zero-c-remove
+            (poly-sort
+             (m-in-p-sum
+              (p-multiplier
+               (monomials (to-poly p1))
+               (monomials (to-poly p2)))))))))
 
 ;; as-monomial/1
 ; Esegue il parse di un monomio riducendolo alla forma base e ordinandolo.
@@ -86,7 +156,22 @@
 (defun as-polynomial  (in)
   (if (is-monomial in)
       (to-poly in)
-    (append (list 'poly) (list (zero-c-remove (m-in-p-sum (poly-sort (poly-parse in))))))))       
+    (append (list 'poly) (list (zero-c-remove (m-in-p-sum (poly-sort (poly-parse in)))))))) 
+
+;; poly-val/2
+; Restituisce il valore del polinomio passato in input nel punto n-dimensionale
+; passato come secondo parametro
+(defun poly-val (p v)
+  (if (equal 'poly (first p))
+      (if (listp v)
+          (let* ((p-parsed (to-poly p))
+                 (vs (variables p-parsed))
+                 (alt (list-alternator vs v)))
+            (if (not (null vs))
+                (eval-m (replace-vars (monomials p-parsed) alt))
+              (monomial-coefficient (second p))))
+        (error "I valori non sono in una lista."))
+    (poly-val (to-poly p) v)))
 
 ;; pprint-polynomial/1
 ; Stampa a video un polinomio in una rappresentazione "tradizionale"
@@ -94,6 +179,138 @@
   (format t "~a" (format nil "~a" (poly-print (second (to-poly p))))))
 
 ;===================================================================
+
+;; TOOL
+;; replace-vars/2
+; Ritorna un monomio costruito sostituendo alle variabili il loro valore
+; corrispondente contenuto nella seconda lista passata come parametro
+(defun replace-vars (ms alt)
+  (if (null (rest ms))
+      (list (list 'm 
+                  (second (first ms)) 
+                  (third (first ms)) 
+                  (replace-vps (var-powers (first ms)) alt)))
+    (append (list (list 'm
+                        (second (first ms))
+                        (third (first ms))
+                        (replace-vps (var-powers (first ms)) alt)))
+            (replace-vars (rest ms) alt))))
+
+;; TOOL
+;; replace-vps/2
+; Ritorna una lista di varpowers costruita sostituendo alla lista di varpowers
+; passata in input i corrispettivi valori contenuti nella seconda lista passata
+; come parametro
+(defun replace-vps (vps alt)
+  (if (null (rest vps))
+      (list (replace-vp (first vps) alt))
+    (append (list (replace-vp (first vps) alt))
+            (replace-vps (rest vps) alt))))
+
+;; TOOL
+;; replace-vp/2
+; Ritorna una varpower costruita sostituendo alla variabile della varpower
+; passata in input il valore contenuto nella seconda lista passata come
+; parametro
+(defun replace-vp (vp alt)
+  (when (not (null alt))
+    (if (and (null (third vp))
+             (null (second vp)))
+        (list 'v 0 0)
+      (if (eq (third vp) (first (first alt)))
+          (list 'v (second vp) (second (first alt)))
+        (replace-vp vp (rest alt))))))
+
+;; TOOL
+;; eval-m/1
+; Ritorna il valore dei monomi passati in input in un determinato punto
+(defun eval-m (ms)
+  (if (not (null (rest ms)))
+      (+ (* (second (first ms)) (eval-vps (var-powers (first ms))))
+         (eval-m (rest ms)))
+    (* (second (first ms)) (eval-vps (var-powers (first ms))))))
+
+;; TOOL
+;; eval-vps/1
+; Ritorna il valore della valutazione delle var-powers in un punto
+(defun eval-vps (vps)
+  (if (null (rest vps))
+      (expt (third (first vps)) (second (first vps)))
+    (* (expt (third (first vps)) (second (first vps)))
+       (eval-vps (rest vps)))))
+
+;; TOOL
+;; list-alternator/2
+; Ritorna una lista contenente tutti gli elementi delle due liste passate in
+; input messi in maniera alternata
+(defun list-alternator (l1 l2)
+  (when (not (null l1))
+    (if (not (null l2))
+        (append (list (list (first l1) (first l2)))
+                (list-alternator (rest l1) (rest l2)))
+      (error "Non ci sono abbastanza valori da alternare!"))))
+
+;; TOOL
+;; p-multiplier/2
+; Ritorna una lista di monomi risultante dalla moltiplicazione tra
+; le due liste di monomi passate in input, senza nessun ordinamento.
+(defun p-multiplier (ms1 ms2)
+  (when (and (not (null ms1)) (not (null ms2)))
+    (append
+     (list (m-multiplier (first ms1) (first ms2)))
+     (p-multiplier (list (first ms1)) (rest ms2))
+     (p-multiplier (rest ms1) ms2))))
+
+;; TOOL
+;; m-multiplier/2
+; Ritorna il monomio risultante dalla moltiplicazione tra i due
+; monomi passati in input.
+(defun m-multiplier (m1 m2)
+  (cond
+   ((null m1) m2)
+   ((null m2) m1)
+   (t
+    (if (or (= (monomial-coefficient m1) 0)
+            (= (monomial-coefficient m2) 0))
+        (list 'm 0 0 nil)
+      (append (list 'm (* (monomial-coefficient m1) (monomial-coefficient m2))
+                    (+ (monomial-degree m1) (monomial-degree m2))
+                    (v-multiplier (var-powers m1) (var-powers m2))))))))
+
+;; TOOL
+;; v-multiplier/2
+; Ritorna una var-power risultante dalla moltiplicazione tra le due
+; var-powers ordinate passate in input.
+(defun v-multiplier (vps1 vps2)
+  (cond
+   ((null vps1) vps2)
+   ((null vps2) vps1)
+   (t
+    (let* ((vp1 (first vps1))
+           (vp2 (first vps2)))
+      (if (equal (varpower-symbol vp1) (varpower-symbol vp2))
+          (append (list (list 'v 
+                              (+ (varpower-power vp1) (varpower-power vp2)) 
+                              (varpower-symbol vp1)))
+                  (v-multiplier (rest vps1) (rest vps2)))
+        (if (string>= (varpower-symbol vp1) (varpower-symbol vp2))
+            (append (list (list 'v (varpower-power vp2) (varpower-symbol vp2)))
+                    (v-multiplier vps1 (rest vps2)))
+          (append (list (list 'v (varpower-power vp1) (varpower-symbol vp1)))
+                  (v-multiplier (rest vps1) vps2))))))))
+
+;; TOOL
+;; sign-inverter/1
+; Data una lista di monomi in input, inverte il segno di tutti i suoi coefficienti
+(defun sign-inverter (ms)
+  (when (not (null ms))
+    (let* ((m (first ms))
+           (c (second m))
+           (d (third m))
+           (vps (fourth m)))
+      (append
+       (list (list 'm (- c) d vps))
+       (sign-inverter (rest ms))))))
 
 ;; TOOL
 ;; poly-print/1
@@ -192,7 +409,7 @@
    ((is-monomial in) (append (list 'poly) (list (list in))))
    ((is-polynomial in) (append (list 'poly) (poly-sort (list (monomials in)))))
    ((if (or (equal '* (first in)) (atom in)) (to-poly (as-monomial in))
-      (as-polynomials in)))))
+      (as-polynomial in)))))
    ;(t (error "Input non valido!")
 
 ;; TOOL
