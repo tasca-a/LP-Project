@@ -1,5 +1,6 @@
 ;;;; -*- Mode: Lisp -*-
 ;;;; 845150 Tasca Alessandro
+;;;; 847020 Suteu Antonio
 
 
 ;; is-monomial/1
@@ -82,9 +83,10 @@
 ; Ritorna una lista di tutte le variabili di un polinomio
 (defun variables (p)
   (let ((p-parsed (to-poly p)))
-    (remove-duplicates (mapcar #'varpower-symbol
-                               (apply #'append
-                                      (mapcar #'var-powers (monomials p-parsed)))))))
+    (remove-duplicates 
+     (mapcar #'varpower-symbol
+             (apply #'append
+                    (mapcar #'var-powers (monomials p-parsed)))))))
 
 ;; monomials/1
 ; Ritorna la lista ordinata di tutti i monomi che appaiono nel polinomio
@@ -117,7 +119,8 @@
                        (monomials (to-poly p2))))))))))
 
 ;; poly-minus/2
-; Ritorna il polinomio risultante dalla differenda dei due polinomi passati in input
+; Ritorna il polinomio risultante dalla differenda dei due 
+; polinomi passati in input
 (defun poly-minus (p1 p2)
   (append (list 'poly)
           (list
@@ -129,7 +132,8 @@
                        (sign-inverter (monomials (to-poly p2)))))))))))
 
 ;; poly-times/2
-; Ritorna il polinomio risultante dalla moltiplicazione dei due polinomi passati in input
+; Ritorna il polinomio risultante dalla moltiplicazione dei due
+;  polinomi passati in input
 (defun poly-times (p1 p2)
   (append (list 'poly)
           (list
@@ -156,7 +160,8 @@
 (defun as-polynomial  (in)
   (if (is-monomial in)
       (to-poly in)
-    (append (list 'poly) (list (zero-c-remove (m-in-p-sum (poly-sort (poly-parse in)))))))) 
+    (append (list 'poly) 
+            (list (zero-c-remove (m-in-p-sum (poly-sort (poly-parse in)))))))) 
 
 ;; poly-val/2
 ; Restituisce il valore del polinomio passato in input nel punto n-dimensionale
@@ -301,7 +306,8 @@
 
 ;; TOOL
 ;; sign-inverter/1
-; Data una lista di monomi in input, inverte il segno di tutti i suoi coefficienti
+; Data una lista di monomi in input, inverte il segno di 
+; tutti i suoi coefficienti
 (defun sign-inverter (ms)
   (when (not (null ms))
     (let* ((m (first ms))
@@ -463,9 +469,10 @@
                       (list (list 'v esp2 v2))))
           (if (not (null varp2))
               (if (equal v1 v2)
-                  (varpow-reduce (append
-                                  (list (list 'v (+ (eval esp1) (eval esp2)) v1))
-                                  coda))
+                  (varpow-reduce 
+                   (append
+                    (list (list 'v (+ (eval esp1) (eval esp2)) v1))
+                    coda))
                 (append (list (list 'v esp1 v1))
                         (varpow-reduce (rest varpows))))))))))
 
@@ -574,14 +581,16 @@
 
 ;; TOOL
 ;; eval-as-number/1
-; Ritorna l'input se la sua valutazione risulta essere un numero, altrimenti nil.
+; Ritorna l'input se la sua valutazione risulta essere un numero,
+; altrimenti nil.
 (defun eval-as-number (in)
   (let ((result (handler-case (eval in) (error () nil) (warning () nil))))
     (when (numberp result) result)))
 
 ;; TOOL
 ;; parse-negative-pow/1
-; Esegue il parse di un input del tipo (expt VAR ESP) trasformandolo nella forma
+; Esegue il parse di un input del tipo (expt VAR ESP) 
+; trasformandolo nella forma
 ; (v ESP VAR) e gestisce il coefficiente negativo.
 (defun parse-negative-pow (pw)
   (when (is-pow-not-parsed pw)

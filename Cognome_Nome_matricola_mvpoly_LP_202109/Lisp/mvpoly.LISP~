@@ -36,6 +36,13 @@
          (and (listp ms)
               (every #'is-monomial ms)))))
 
+;; is_zero/1
+; Ritorna TRUE quando il parametro passato come input è una
+; rappresentazione dello zero.
+(defun is_zero (p)
+  (if (equal '(poly nil) (as-polynomial p)) t
+    (if (equal (second (first (second (as-polynomial p)))) 0) t nil)))
+
 ;; var-powers/1
 ; Ritorna una lista contenente le varpowers di un monomio.
 (defun var-powers (m)
@@ -46,8 +53,8 @@
 ; Ritorna la lista delle variabili contenuti in un monomio
 (defun vars-of (m)
   (if (basic-monomial-checks m)
-      (mapcar (lambda (x) (third x)) (var-powers m))
-    (error "Il parametro passato non e' un monomio"))) ; TODO qua ci vanno altri controlli!
+      (mapcar (lambda (x) (third x)) (var-powers (mono-sort m)))
+    (error "Il parametro passato non e' un monomio")))
 
 ;; monomial-degree/1
 ; Ritorna il grado totale di un monomio.
@@ -85,7 +92,7 @@
 (defun monomials (p)
   (if (not (equal (first p) 'poly))
       (monomials (to-poly p))
-    (first (rest p))))
+    (poly-sort (first (rest p)))))
 
 ;; max-degree/1
 ; Ritorna il grado massimo dei monomi di un polinomio
@@ -161,7 +168,10 @@
                  (vs (variables p-parsed))
                  (alt (list-alternator vs v)))
             (if (not (null vs))
-                (eval-m ;
+                (eval-m (replace-vars (monomials p-parsed) alt))
+              (monomial-coefficient (second p))))
+        (error "I valori non sono in una lista."))
+    (poly-val (to-poly p) v)))
 
 ;; pprint-polynomial/1
 ; Stampa a video un polinomio in una rappresentazione "tradizionale"
@@ -171,12 +181,54 @@
 ;===================================================================
 
 ;; TOOL
+;; replace-vars/2
+; Ritorna un monomio costruito sostituendo alle variabili il loro valore
+; corrispondente contenuto nella seconda lista passata come parametro
+(defun replace-vars (ms alt)
+  (if (null (rest ms))
+      (list (list 'm 
+                  (second (first ms)) 
+                  (third (first ms)) 
+                  (replace-vps (var-powers (first ms)) alt)))
+    (append (list (list 'm
+                        (second (first ms))
+                        (third (first ms))
+                        (replace-vps (var-powers (first ms)) alt)))
+            (replace-vars (rest ms) alt))))
+
+;; TOOL
+;; replace-vps/2
+; Ritorna una lista di varpowers costruita sostituendo alla lista di varpowers
+; passata in input i corrispettivi valori contenuti nella seconda lista passata
+; come parametro
+(defun replace-vps (vps alt)
+  (if (null (rest vps))
+      (list (replace-vp (first vps) alt))
+    (append (list (replace-vp (first vps) alt))
+            (replace-vps (rest vps) alt))))
+
+;; TOOL
+;; replace-vp/2
+; Ritorna una varpower costruita sostituendo alla variabile della varpower
+; passata in input il valore contenuto nella seconda lista passata come
+; parametro
+(defun replace-vp (vp alt)
+  (when (not (null alt))
+    (if (and (null (third vp))
+             (null (second vp)))
+        (list 'v 0 0)
+      (if (eq (third vp) (first (first alt)))
+          (list 'v (second vp) (second (first alt)))
+        (replace-vp vp (rest alt))))))
+
+;; TOOL
 ;; eval-m/1
 ; Ritorna il valore dei monomi passati in input in un determinato punto
 (defun eval-m (ms)
   (if (not (null (rest ms)))
       (+ (* (second (first ms)) (eval-vps (var-powers (first ms))))
-         (eval-m (rest ms)))))
+         (eval-m (rest ms)))
+    (* (second (first ms)) (eval-vps (var-powers (first ms))))))
 
 ;; TOOL
 ;; eval-vps/1
