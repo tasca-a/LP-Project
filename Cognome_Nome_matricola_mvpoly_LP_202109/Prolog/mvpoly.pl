@@ -1,3 +1,5 @@
+%%%% -*- Mode: Prolog -*-
+
 %%%% 845150 Tasca Alessandro
 %%%% 847020 Suteu Antonio
 
