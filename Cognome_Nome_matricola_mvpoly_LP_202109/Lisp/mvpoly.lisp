@@ -418,12 +418,12 @@
 
 ;; TOOL
 ;; poly-sort/1
-(defun poly-sort (m)
-  (stable-sort (copy-list m) #'comp-d))
+(defun poly-sort (ms)
+  (stable-sort (copy-list ms) #'comp-d))
 
 ;; TOOL
 ;; comp-d/2
-; Ritorna TRUE se "m1" ha grado totale minore di "m2"
+; Ritorna TRUE se "m" ha grado totale minore di "r"
 (defun comp-d (m r)
   (if (null m)
       nil
@@ -513,7 +513,7 @@
 ;; TOOL
 ;; mono-parse/1
 ; Esegue il parse dell'input "in" e lo trasforma in un monomio nella
-; forma canonica, ma senza nessun tipo di ordinazione.
+; forma canonica, ma senza nessun tipo di ordinamento.
 (defun mono-parse (in)
   (cond
    ((eval-as-number in) (list 'm (eval in) 0 nil))
@@ -609,14 +609,12 @@
 
 ;; TOOL
 ;; is-operator/1
-; Ritorna TRUE quando il parametro parratogli e' un operatore
+; Ritorna TRUE quando il parametro passatogli e' un operatore
 (defun is-operator (c)
   (if (or (eql c '+) (eql c '-) (eql c '*) (eql c '/)) t nil))
 
 ;; TOOL
 ;; compare-varpowers/2
-; "Compares the variables in monomials with the same TD (total degree)"
-; Non l'ho ancora capito.
 ; Dati:
 ;   - v1 = (first vps1) -> es. (v 3 a)
 ;   - v2 = (first vps2) -> es. (v 2 b)
