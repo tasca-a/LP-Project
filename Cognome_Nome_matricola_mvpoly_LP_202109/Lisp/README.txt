@@ -1,3 +1,5 @@
+%%% -*- Mode: Text -*-
+
 In questo file README verranno illustrate tutte le funzioni
 relative al progetto di Linguaggi di Programmazione dell'
 appello di settembre 2021.
