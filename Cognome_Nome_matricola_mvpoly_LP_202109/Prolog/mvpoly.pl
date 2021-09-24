@@ -1,17 +1,8 @@
-%%Polinomi multivariati
+%%%% 845150 Tasca Alessandro
+%%%% 847020 Suteu Antonio
 
+%%% Polinomi multivariati
 
-%% rappresentazione monomio m(Coefficient, TotalDegree, VarsPowers)
-% Coefficient -> coefficiente del monomio
-% TotalDegree -> è il grado totale del monomio
-% VarsPowers -> è una lista di varpowers
-% varpower -> è la rappetensatzione di una variabile elevata ad un esponente E
-% v(VarSymbol, Power)
-
-
-%%ESEMPIO MONOMIO
-% m(Coefficient, TotalDegree, VarsPowers).
-% m(1, 7, [v(3, s), v(3, t), v(1, y)])
 
 %%is_monomial/1
 %ritorna true se l'input è la rappresentazione di un monomio
@@ -22,8 +13,8 @@ is_monomial(m(C, TD, VPs)) :-
   TD = CalculatedTD.
 
 %%is_var_power/1
-% ritorna true se l'input è la rappresentazione di una variabile elevata ad
-% una potenza
+%ritorna true se l'input è la rappresentazione di una variabile elevata ad
+%una potenza
 is_var_power(v(Power, VarSymbol)) :-
   atom(VarSymbol),
   integer(Power),
@@ -191,12 +182,12 @@ get_poly_coeffs(poly(Monomials), CoeffList) :-
 %%get_poly_coeffsCall/2
 %usato da get_poly_coeffs/2
 get_poly_coeffsCall(poly([]), []) :- !.
-get_poly_coeffsCall(poly([M|Ms]), [C|Cs]) :-
+get_poly_coeffsCall(poly([M | Ms]), [C | Cs]) :-
   get_monomial_coef(M, C),
   get_poly_coeffsCall(poly(Ms), Cs).
 
 
-%% variables/2
+%%variables/2
 %ritorna true se il secondo argomento è la lista di tutte le varaibili di
 %un Poly passato come primo argomento
 variables(poly([]), []) :- !.
@@ -206,7 +197,7 @@ variables(Poly, Variables) :-
   get_varsymbols_from_vps(VarsList, UnsortedVarList), !,
   sort(UnsortedVarList, Variables).
 
-%% get_vars_from_poly/2
+%%get_vars_from_poly/2
 %ritorna true se il secondo argomento unifica con la lista delle variabili dei
 %monomi che formano il Poly passato come primo argomento
 get_vars_from_poly(poly([]), []) :- !.
@@ -249,7 +240,7 @@ min_degree(Poly, Degree) :-
 
 
 
-%% poly_plus/3
+%%poly_plus/3
 %ritrona true se Result è la somma fra P1 e P2 (due polinomi)
 poly_plus(P1, P2, Result):-
   to_polynomial(P1, P1Parsed),
@@ -257,7 +248,7 @@ poly_plus(P1, P2, Result):-
   poly_plusCall(P1Parsed, P2Parsed, Result).
 
 
-%% poly_plusCall/3
+%%poly_plusCall/3
 %usato da poly_plus/3 e poly_minus/3
 poly_plusCall(poly([]), poly([]), poly([])) :- !.
 poly_plusCall(poly(MonoList), poly([]), poly(ResultMonoList)) :-
@@ -377,7 +368,7 @@ sum_same_variables_in_monos([v(Pow1, VarSymbol) | Vs1],
 %(rappresentato da VariableValues)
 %ESEMPIO: Poly = 5a + b^2, VariableValues = [5, 2], Value = 5*5 + 2^2 = 29
 poly_val(Poly, VariableValues, Value) :-
-  poly_valCall(Poly, VariableValues, Value).
+  poly_valCall(Poly, VariableValues, Value), nl.
 
 
 %%poly_valCall/3
@@ -426,14 +417,14 @@ eval_mono(m(C, TD, VPs), LinkedVSs, Result) :-
 
 
 %%sub_mono_vars/3
-%This predicate creates a new monomial by substituing the VarSymbols with
-%the corresponding values
+%ritora true dopo aver sostituito le variabili del monomio con dei valori
+%presi da LinkedVSs
 sub_mono_vars(m(C, TD, VPs), LinkedVSs, m(C, TD, ListOfVarsOk)) :-
   get_vps_from_mono(m(c, TD, VPs), ListOfVars),
   substitute_vars(ListOfVars, LinkedVSs, ListOfVarsOk).
 
 
-%%% substitute_vars/3
+%%substitute_vars/3
 %usato da sub_mono_vars/3
 substitute_vars([], _, []) :- !.
 substitute_vars([v(Pow, Var)], [Var, NewValue], [v(Pow, NewValue)]) :- !.
@@ -458,12 +449,11 @@ substitute_vars([v(Pow, Var) | Vs],
 
 
 %%eval_vars/2
-%suato da eval_mono/3
+%usato da eval_mono/3
 eval_vars([], 1) :- !.
 eval_vars([v(Pow, Base) | RestVs], VarsValue) :-
   Value is Base ** Pow,
   eval_vars(RestVs, ValueRest),
-%%VarsValue is ValueRest * Value.
   VarsValue is Value * ValueRest.
 
 
